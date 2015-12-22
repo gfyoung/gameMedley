@@ -1,0 +1,361 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>Troll Speeding Typing!</title>
+	<style>
+		div {
+			display:inline-block;
+		}
+	</style>
+	<script src="englishWordsList.js"></script>
+	<script src="jQuery.js"></script>
+	<script>
+		var GAMESCREENWIDTH;
+		var GAMESCREENHEIGHT;
+		var WINDOWHEIGHT;
+
+		var MARGINLEFT;
+		var MARGINRIGHT;
+
+		var INVADERS = {};
+		var INVADERCOUNT = 10;
+
+		var INVADERWIDTH;
+		var INVADERHEIGHT = 100;
+
+		var VERTICALBOUNDARY;
+		var EMPTYDIV;
+
+		$(document).ready(function(){
+			MARGINLEFT = parseInt($('body').css('marginLeft').replace('px', ''));
+			MARGINRIGHT = parseInt($('body').css('marginRight').replace('px', ''));
+
+			setTrollOptions();
+			setWindowDependentParams();
+		});
+
+		var KEYEVENTS = [];
+
+		var RANDOMWORD = getNewRandomWord();
+		var USERSTRING = '';
+		var WORDCOUNT = 0;
+		var SCORE = 0;
+
+		var WORDTHRESHOLD = 5;
+
+		for(var index = 0; index < INVADERCOUNT; index++){
+			INVADERS[index] = null;
+		}
+
+		var NOKEYPRESSED = -1;
+		var BACKSPACE = 8;
+
+		var VELOCITY = 1;
+		var VELOCITYINCR = 0.5;
+
+		var USERINDICATOR = "User-Typed String: ";
+		var RANDOMINDICATOR = "New Word: ";
+		var SCOREINDICATOR = "Score: ";
+
+		var INVADERGENPROB = 0.25;
+
+		var TROLLMESSAGE = "";
+		var SCORECUTOFF;
+		var ALLOWEDLETTERS = ['a', 'e', 'i', 'o', 'u', 'b', 'c',
+			'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p',
+			'q', 'r', 's', 't', 'v', 'w', 'x', 'y', 'z'];
+
+		var TROLLOPTION;
+		var TROLLOPTIONS = {
+			UNDECIDED: 0,
+			REMOVELETTERS: 1,
+			CHANGELETTERS: 2,
+			MULTIPLYLETTERS: 3
+		};
+
+		function setTrollOptions(){
+			SCORECUTOFF = getRandomBoundedInt(1, 40);
+			TROLLOPTION = TROLLOPTIONS.UNDECIDED;
+		}
+
+		var FPS = 30;
+		setInterval(function(){
+			update();
+			draw();
+		}, FPS);
+
+		$(document).bind("keydown", function(event){
+			if(event.which === BACKSPACE){
+				event.preventDefault();
+			}
+
+			KEYEVENTS.push(event.which);
+		});
+
+		$(window).on("resize", function(){
+			setWindowDependentParams();
+
+			$('.invader').each(function(index){
+				$(this).width(INVADERWIDTH);
+			});
+		});
+
+		function setWindowDependentParams(){
+			GAMESCREENWIDTH = $(window).width() - (MARGINLEFT + MARGINRIGHT + 20);
+			INVADERWIDTH = GAMESCREENWIDTH / INVADERCOUNT;
+
+			WINDOWHEIGHT = $(window).height();
+			GAMESCREENHEIGHT = WINDOWHEIGHT - $("div#container").height();
+
+			VERTICALBOUNDARY = (GAMESCREENHEIGHT - INVADERHEIGHT);
+			EMPTYDIV = "<div class='invader' style='width:" + INVADERWIDTH
+					+ "px;height:" + INVADERHEIGHT + "px'></div>";
+		}
+
+		function getRandomBoundedInt(lowerBound, upperBound){
+			return Math.floor(Math.random() * upperBound) + lowerBound;
+		}
+
+		function getRandomUpperBoundedInt(upperBound){
+			return getRandomBoundedInt(0, upperBound);
+		}
+
+		function getKeyPress(){
+			var keyPressed;
+
+			if(KEYEVENTS.length > 0){
+				keyPressed = KEYEVENTS[KEYEVENTS.length - 1];
+				KEYEVENTS.splice(KEYEVENTS.length - 1, 1);
+			}else{
+				keyPressed = NOKEYPRESSED;
+			}
+
+			return keyPressed;
+		}
+
+		function getUserString(){
+			var userString = $("div#userString").html();
+			return userString.replace(USERINDICATOR, '');
+		}
+
+		function updateUserString(userString){
+			$("div#userString").html(USERINDICATOR + userString);
+		}
+
+		function updateScore(score){
+			$("div#score").html(SCOREINDICATOR + score);
+		}
+
+		function getNewRandomWord(){
+			var randomIndex = getRandomUpperBoundedInt(englishWords.length);
+			return englishWords[randomIndex];
+		}
+
+		function updateRandomWord(randomWord){
+			$("div#randomWord").html(RANDOMINDICATOR + randomWord);
+		}
+
+		function isLetter(keyPress){
+			return keyPress >= 65 && keyPress <= 90;
+		}
+
+		function destroyInvaders(){
+			for(var index = 0; index < INVADERCOUNT; index++){
+				INVADERS[index] = null;
+			}
+		}
+
+		function moveInvaders(){
+			for(var index = 0; index < INVADERCOUNT; index++){
+				if(INVADERS[index] !== null){
+					INVADERS[index].move();
+				}
+			}
+		}
+
+		function addInvader(){
+			if(Math.random() < INVADERGENPROB){
+				var missingIndices = [];
+
+				for(var index = 0; index < INVADERCOUNT; index++){
+					if(INVADERS[index] === null){
+						missingIndices.push(index);
+					}
+				}
+
+				if(missingIndices.length > 0){
+					randomIndex = getRandomUpperBoundedInt(missingIndices.length);
+					chosenIndex = missingIndices[randomIndex];
+
+					INVADERS[chosenIndex] = new Invader();
+				}
+			}
+		}
+
+		function successfulInvasion(){
+			for(var index = 0; index < INVADERCOUNT; index++){
+				var invader = INVADERS[index];
+
+				if(invader === null){
+					return false;
+				}
+				
+				var topCoord = parseInt(invader.style.top.replace('px', ''));
+				
+				if(topCoord !== VERTICALBOUNDARY){
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		function drawInvaders(){
+			$(".invader").remove();
+
+			for(var index = 0; index < INVADERCOUNT; index++){
+				if(INVADERS[index] !== null){
+					$("body").append(INVADERS[index]);
+				}else{
+					$("body").append(EMPTYDIV);
+				}
+			}
+		}
+
+		function Invader(){
+			var img = new Image();
+			img.classList.add("invader");
+			img.src = 'images/invader.png';
+
+			img.width = INVADERWIDTH;
+			img.height = INVADERHEIGHT;
+
+			img.style.position = 'relative';
+			img.style.top = '0px'; // relative to div
+			img.style.display = 'inline';
+
+			img.move = function(){
+				var topCoord = parseInt(this.style.top.replace('px', ''));
+
+				topCoord = Math.min(topCoord + VELOCITY, VERTICALBOUNDARY);
+				this.style.top = topCoord + 'px';
+			};
+
+			return img;
+		}
+
+		function canTroll(){
+			return SCORE >= SCORECUTOFF;
+		}
+
+		function letterIsAllowed(letter){
+			return ($.inArray(letter, ALLOWEDLETTERS) !== -1);
+		}
+
+		function changeLetter(keyPress){
+			var letterDelta = getRandomBoundedInt(1, 26);
+			var newKeyPress = (keyPress - 65 + letterDelta)%26 + 65;
+			return String.fromCharCode(newKeyPress).toLowerCase();
+		}
+
+		function getRepeatedLetter(letter){
+			var repeatedLetter = '';
+			var letterMultiply = getRandomBoundedInt(2, 10);
+
+			for(var count = 0; count < letterMultiply; count++){
+				repeatedLetter += letter;
+			}
+
+			return repeatedLetter;
+		}
+
+		function update(){
+			if(successfulInvasion()){
+				destroyInvaders();
+
+				RANDOMWORD = getNewRandomWord();
+				USERSTRING = '';
+				WORDCOUNT = 0;
+				VELOCITY = 1;
+				SCORE = 0;
+
+				setTrollOptions();
+				alert("You lose!" + TROLLMESSAGE);
+			}else if(USERSTRING === RANDOMWORD){
+				SCORE++;
+				WORDCOUNT++;
+				USERSTRING = '';
+				RANDOMWORD = getNewRandomWord();
+
+				destroyInvaders();
+
+				if(WORDCOUNT === WORDTHRESHOLD){
+					WORDCOUNT = 0;
+					VELOCITY += VELOCITYINCR;
+				}
+
+				if(canTroll()){
+					if(TROLLOPTION === TROLLOPTIONS.UNDECIDED){
+						TROLLOPTION = getRandomBoundedInt(1,
+								Object.keys(TROLLOPTIONS).length);
+					}
+
+					if(TROLLOPTION === TROLLOPTIONS.REMOVELETTERS){
+						ALLOWEDLETTERS.splice(0, 1);
+					}
+				}
+			}else{
+				var keyPress = getKeyPress();
+
+				if(keyPress === BACKSPACE){
+					if(USERSTRING.length > 0){
+						USERSTRING = USERSTRING.slice(0, -1);
+					}
+				}else if(isLetter(keyPress)){
+					var letter = String.fromCharCode(keyPress).toLowerCase();
+					
+					if(!canTroll() || (TROLLOPTION ===
+							TROLLOPTIONS.REMOVELETTERS
+							&& letterIsAllowed(letter))){
+						USERSTRING = USERSTRING + letter;
+					}else{
+						switch(TROLLOPTION){
+							case TROLLOPTIONS.CHANGELETTERS:
+								var changedLetter = changeLetter(keyPress);
+								USERSTRING = USERSTRING + changedLetter;
+								break;
+							case TROLLOPTIONS.MULTIPLYLETTERS:
+								var multiLetter = getRepeatedLetter(letter);
+								USERSTRING = USERSTRING + multiLetter;
+								break;
+							default:
+								break;
+						}
+
+						TROLLMESSAGE = "\n\nIt seems like you have some keyboard issues." +
+								"\nYou should get them checked out.";
+					}
+				}
+			}
+
+			moveInvaders();
+			addInvader();
+		}
+
+		function draw(){
+			drawInvaders();
+			updateRandomWord(RANDOMWORD);
+			updateUserString(USERSTRING);
+			updateScore(SCORE);
+		}
+	</script>
+</head>
+<body>
+<div id="container" style="display:block">
+	<div id="score" style="float:right">Score: </div>
+	<div id="randomWord">New Word: </div><br>
+	<div id="userString">User-Typed String: </div>
+</div>
+<hr>
+</body>
+</html>
