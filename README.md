@@ -1,5 +1,5 @@
 # gameMedley
-Mixture of JS and Python-inspired games
+A medley of games in a medley of languages
 
 # Development and Usage
 If you would like to enjoy these games and/or develop them, please fork and clone the repository first! Then feel free to play
