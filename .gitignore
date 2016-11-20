@@ -1,1 +1,10 @@
+# Python files
 *.pyc
+
+# MacOS files
+.DS_Store
+
+# IntelliJ files
+pmip
+.idea
+gameMedley.iml
