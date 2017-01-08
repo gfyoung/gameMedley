@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="jQuery.js"></script>
+<script src="jQueryColor.js"></script>
+<script src="sound.js"></script>
+<script>
+	var RED = getRGB([200, 0, 0]);
+	var BRIGHTRED = getRGB([255, 0, 0]);
+	
+	var GREEN = getRGB([0, 200, 0]);
+	var BRIGHTGREEN = getRGB([0, 255, 0]);
+	
+	var BLUE = getRGB([0, 0, 200]);
+	var BRIGHTBLUE = getRGB([0, 0, 255]);
+
+	var YELLOW = getRGB([200, 200, 0]);
+	var BRIGHTYELLOW = getRGB([255, 255, 0]);
+
+	var ANIMATIONDUR = 500;
+	var WAITINGDUR = 4000;
+
+	var SCORE = 0;
+	var SEQUENCE = [];
+
+	var SEQINDEX;
+	var BUTTONSELECTED;
+	var AWAITINGINPUT = false;
+
+	var BACKSPACE = 8;
+	var TROLLCUTOFF = 5;
+	
+	var COLORSOUNDS = [
+		{div: "#div1", bright: BRIGHTYELLOW, normal: YELLOW, beep: "beep1"},
+		{div: "#div2", bright: BRIGHTBLUE, normal: BLUE, beep: "beep2"},
+		{div: "#div3", bright: BRIGHTRED, normal: RED, beep: "beep3"},
+		{div: "#div4", bright: BRIGHTGREEN, normal: GREEN, beep: "beep4"}
+	];
+
+	$(document).bind("keydown", function(event){
+        if(event.which === BACKSPACE){
+            event.preventDefault();
+        }
+	});
+		
+	function canTroll(){
+		if(SCORE >= TROLLCUTOFF){
+			return Math.random() < (SCORE - TROLLCUTOFF) * 0.05;
+		}
+		
+		return false;
+	}
+
+	function getHex(decNum){
+		var prefix = decNum > 16 ? "" : "0";
+		var hexNum = decNum.toString(16);
+		
+		return prefix + hexNum;
+	}
+
+	function getRGB(rgbArray){
+		var red = rgbArray[0];
+		var green = rgbArray[1];
+		var blue = rgbArray[2];
+
+		return "#" + getHex(red) + getHex(green) + getHex(blue);
+	}
+
+	function playSound(index){
+		var colorSound = COLORSOUNDS[index];
+
+		Sound.play(colorSound.beep);
+		$(colorSound.div).animate({backgroundColor: colorSound.bright}, ANIMATIONDUR);
+		$(colorSound.div).animate({backgroundColor: colorSound.normal}, ANIMATIONDUR);
+	}
+
+	function addNote(){
+		var nextNote = Math.floor(COLORSOUNDS.length * Math.random());
+		SEQUENCE.push(nextNote);
+	}
+
+	function playSequence(){
+		(function(index){
+			if(index < SEQUENCE.length){
+				playSound(SEQUENCE[index]);
+				
+				var caller = arguments.callee;
+				setTimeout(function(){
+					caller(index + 1);
+				}, 1500);
+			}else{
+				SEQINDEX = 0;
+				AWAITINGINPUT = true;
+			}
+		})(0);
+	}
+
+	function updateScore(){
+		$("#score").html("SCORE: " + SCORE);
+	}
+
+	function resetGame(){
+		AWAITINGINPUT = false;
+		SEQUENCE = [];
+		SCORE = 0;
+		
+		updateScore();
+	}
+
+	function runGame(){
+		addNote();
+		playSequence();
+	}
+
+	$(document).ready(function(){
+		$(".soundButton").click(function(){
+			if(AWAITINGINPUT){
+				var BUTTONSELECTED = parseInt(this.id.replace("div", "")) - 1;
+				
+				if(canTroll()){
+					if(BUTTONSELECTED === SEQUENCE[SEQINDEX]){
+						BUTTONSELECTED = (BUTTONSELECTED + 1)%COLORSOUNDS.length;
+						playSound(BUTTONSELECTED);
+					
+						// Delay so that user hears that he has been trolled
+						setTimeout(function(){
+							for(var soundIndex = 0; soundIndex < COLORSOUNDS.length; soundIndex++){
+								playSound(soundIndex);
+							}
+						}, 500);
+
+						// Delay so that sounds can be played
+						setTimeout(function(){
+							alert("You chose the wrong note!\n" +
+								"You lose!\n\n" +
+                                "Seems like your mouse had an issue.\n" +
+                                "You should get it checked out.");
+
+							setTimeout(function(){
+								resetGame();
+								runGame();
+							})
+						}, 1000);
+					}
+				}
+
+				else if(BUTTONSELECTED === SEQUENCE[SEQINDEX]){
+					playSound(BUTTONSELECTED);
+
+					if(SEQINDEX === SEQUENCE.length - 1){
+						AWAITINGINPUT = false;
+						SCORE = SCORE + 1;
+						
+						setTimeout(function(){
+							updateScore();
+							runGame();
+						}, 1500);
+					}else{
+						SEQINDEX = SEQINDEX + 1;
+					}
+				}else{
+					for(var soundIndex = 0; soundIndex < COLORSOUNDS.length; soundIndex++){
+						playSound(soundIndex);
+					}
+					
+					// Delay so that sounds can be played
+					setTimeout(function(){
+						alert("You chose the wrong note!\n" +
+                                "You lose!");
+
+						setTimeout(function(){
+							resetGame();
+							runGame();
+						})
+					}, 500);
+				}
+			}
+		});
+
+		runGame();
+	});
+</script>
+<style>
+#container {
+	height: 200px;
+	margin-bottom: 30px;
+}
+
+#div1 {
+	background-color: #c8c800;
+	float: left;
+	height: 200px;
+	margin-right: 30px;
+	width: 200px;
+}
+
+#div2 {
+	background-color: #0000c8;
+	float: left;
+	height: 200px;
+	width: 200px;
+}
+
+#div3 {
+	background-color: #c80000;
+	float: left;
+	height: 200px;
+	margin-right: 30px;
+	width: 200px;
+}
+
+#div4 {
+	background-color: #00c800;
+	float: left;
+	height: 200px;
+	width: 200px;
+}
+
+#score {
+	font-weight:bold;
+}
+</style>
+</head>
+<body>
+<div id="container">
+	<div class="soundButton" id="div1"></div>
+	<div class="soundButton" id="div2"></div>
+</div>
+<div id="container">
+	<div class="soundButton" id="div3"></div>
+	<div class="soundButton" id="div4"></div>
+</div>
+<div id="score">SCORE: 0</div>
+</body>
+</html>
